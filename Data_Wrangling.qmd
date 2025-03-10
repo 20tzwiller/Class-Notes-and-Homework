@@ -1,0 +1,171 @@
+---
+title: "Homework #1"
+format:
+  html:
+    toc: true
+    toc-location: left
+    theme: stata
+    self-contained: true
+---
+
+## Goals
+
+Read the files in and then accomplish the following goals:
+
+```{r}
+#For Genre Data, I used read.table and set the header to TRUE in order to read in the .txt file as a table, with Artist and Genre as the headers for the table. 
+Genre_Data <- read.table(
+  "/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_genre.txt", header = TRUE)
+
+#For the next 3 csv files, I just used the read.csv function in order to read the files in as a table, taking the first row and using them as the column headers
+Name_Birth_Data <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_name.csv")
+Album_Data <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_studio_albums.csv")
+Top_Hits_Data <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_top_hits.csv")
+
+#I did use colnames to rename "artist" to "Artist", which made my merge functions a little cleaner later on. 
+Num_Hits_Data <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_number_one_hits.csv")
+colnames(Num_Hits_Data) <- c("Artist", "number_one_hits")
+
+#gsub found the $ in the Imagine Dragons function and replaced it with a space, which made it cleaner for when I used the aggregate function later on. Otherwise Imagine Dragons was dropped from the table.
+Net_Worth_Data <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 1/artist_net_worth.csv")
+Net_Worth_Data$net_worth_millions <- gsub("\\$", "", Net_Worth_Data$net_worth_millions)
+
+#And like Num_Hits_Data, I did rename the columns, just updating artist to Artist, which again made my merge functions a little bit cleaner
+colnames(Net_Worth_Data) <- c("Artist", 'Net_Worth')
+```
+
+
+### Pre-join Goals
+
+```{r}
+#Here, in the pre-join goals I opted to use the aggregate function because it just made more sense to me than using the duplicate function.
+
+Genre_Data_2 <- aggregate(genre ~ Artist, Genre_Data, unique)
+
+Name_Birth_Data_2 <- aggregate((as.numeric(Birth_Year)) ~ Artist, Name_Birth_Data, unique)
+
+Net_Worth_Data_2 <- aggregate((as.numeric(Net_Worth)) ~ Artist, Net_Worth_Data, unique)
+
+Num_Hits_Data_2 <- aggregate(number_one_hits ~ Artist, Num_Hits_Data, unique)
+
+Album_Data_2 <- aggregate(studio_albums ~ Artist, Album_Data, unique)
+
+Top_Hits_Data_2 <- aggregate(Top_Hit ~ Artist, Top_Hits_Data, unique)
+
+Top_Hits_Year <- aggregate(Year ~ Artist, Top_Hits_Data, unique)
+```
+
+* Which 5 artists have the greatest net worth?
+
+```{r}
+Top_Networth <- head(Net_Worth_Data_2[order(Net_Worth_Data_2$`(as.numeric(Net_Worth))`, decreasing = TRUE), ], 5)
+rmarkdown::paged_table(Top_Networth)
+```
+
+
+* Which 15 artists have the most number 1 hits?
+
+```{r}
+Most_Hits <- head(Num_Hits_Data_2[order(Num_Hits_Data_2$number_one_hits, decreasing = TRUE), ], 15)
+rmarkdown::paged_table(Most_Hits)
+```
+
+
+* Which 10 artists have the fewest studio albums?
+
+```{r}
+Fewest_Albums <- head(Album_Data_2[order(Album_Data_2$studio_albums, decreasing = FALSE), ], 10)
+rmarkdown::paged_table(Fewest_Albums)
+```
+
+
+After you have those done, you can join your data frames together.
+
+```{r}
+Complete_songs_a <- merge(
+  x = Name_Birth_Data_2,
+  y = Genre_Data_2,
+  by = ("Artist")
+)
+
+Complete_songs_b <- merge(
+  x = Complete_songs_a,
+  y = Net_Worth_Data_2,
+  by = ("Artist")
+)
+
+Complete_songs_c <- merge(
+  x = Complete_songs_b,
+  y = Num_Hits_Data_2,
+  by = "Artist"
+)
+
+Complete_songs_d <- merge(
+  x = Complete_songs_c,
+  y = Album_Data_2,
+  by = "Artist"
+)
+
+Complete_songs_e <- merge(
+  x = Complete_songs_d,
+  y = Top_Hits_Data_2,
+  by = "Artist"
+)
+
+Songs_Final <- merge(
+  x = Complete_songs_e,
+  y = Top_Hits_Year,
+  by = "Artist"
+)
+
+colnames(Songs_Final) <- c('Artist Name', 'Birth_Year',
+                           'Genre',
+                           'Net_Worth_in_Mil', '#1 Hits', 
+                           'Studio_Albums', 'Top Hit', 
+                           'Year')
+```
+
+
+### Post-join Goals
+
+```{r}
+Songs_Final$Time_Since_Founding <- 2024 - Songs_Final$Birth_Year
+Songs_Final$Mil_Per_Album <- Songs_Final$Net_Worth_in_Mil / Songs_Final$Studio_Albums
+
+rmarkdown::paged_table(Songs_Final)
+```
+
+
+* Create variables to capture the following ideas:
+    + How long has the artist been around? You can just use their birth year.
+    + Something to capture each artist's net worth per studio album.
+
+* Plot net worth per studio album, the "been around" variable, and genre. There should be points and colors here. 
+
+```{r}
+library(ggplot2)
+library(ggthemes)
+# https://www.datanovia.com/en/blog/ggplot-themes-gallery/
+
+Songs_Graphic <- ggplot(data = Songs_Final, 
+                        aes(
+                          x = Time_Since_Founding,
+                          y = Mil_Per_Album,
+                          color = Genre,
+                          size = Net_Worth_in_Mil)) +
+  geom_point() +
+  theme_stata() +
+  labs(
+    title = 'Millions Per Album vs Time Since Founding',
+    x = 'Time Since Founding',
+    y = 'Million Per Album',
+    size = "Net Worth in Millions"
+  )
+Songs_Graphic
+
+```
+
+
+For all tasks comment your code and explain what you found!
+
+
