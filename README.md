@@ -1,5 +1,5 @@
 # Unstructured_Notes
-Notes from my Unstructured Data Analytics Class.
+Some projects and homeworks from my classes at Mendoza. Not an exhaustive list. 
 
 Advanced Stats Lab: Creating a glm model, gam model, and neural network model to make and evaluate predictions
 
