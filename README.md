@@ -1,5 +1,4 @@
-# Unstructured_Notes
-Some projects and homeworks from my classes at Mendoza. Not an exhaustive list. 
+Projects and Homework from my classes at Mendoza, including: Regex Transcript Cleaner, Sentiment Analysis, Webscraping, SQL Queries
 
 Advanced Stats Lab: Creating a glm model, gam model, and neural network model to make and evaluate predictions
 
