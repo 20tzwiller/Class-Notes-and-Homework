@@ -1,0 +1,88 @@
+---
+title: "Class 5 Lab"
+author: "Tom Zwiller"
+date: "2025-03-30"
+output: html_document
+---
+
+**1. Load the SNA and iGraph Packages**
+
+```{r message=FALSE, warning=FALSE}
+#Loading the packages I'll need
+library(ggpubr)
+library(ggraph)
+library(dplyr)
+library(igraph) 
+library(sna)
+library(intergraph) 
+```
+<br>
+
+**2. Load your directed network data**
+```{r}
+#Importing the node and edge csv's
+nodes <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/nodelist.csv")
+summary(nodes)
+edges <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/edgelist.csv')
+summary(edges)
+```
+<br>
+
+**3. Create Directed SNA and iGraph**
+```{r}
+# Create igraph and sna object and visualize the network
+# first list the edgelist, whether the network is directed, and the vertex attributes.
+net <- graph_from_data_frame(edges, directed = T, vertices = nodes)
+
+#making the igraph object into an sna object
+net_s <- igraph::simplify(net)
+net_s_sna <- asNetwork(net_s) 
+```
+<br>
+
+**4. Calculating Triad Census**
+
+```{r}
+#Making the directed Triad Census
+#using sna triad for the better labels
+sna::triad.census(net_s_sna)
+#getting the highest type of triad
+colnames(sna::triad.census(net_s_sna))[which.max(sna::triad.census(net_s_sna))]
+```
+The 102 triad (1 mutual, 0 asymetirc and 2 nulls) was the most prevalent in the network with a total of 113 instances. 
+
+<br>
+
+**5. Age Assortativity of the Network**
+
+```{r}
+assortativity(net, V(net)$Age, directed = T)
+```
+The age assortativity was 0.04203086, meaning I had some older ages associating with other older aged people.
+
+<br>
+
+**6. Conditional Uniform Graph of Transitivity vs Density**
+
+```{r}
+#Test transitivity vs density
+Cug_Edges <- sna::cug.test(net_s_sna, gtrans, cmode="edges")
+
+#making the plot
+plot(Cug_Edges)
+
+#our network
+Cug_Edges$obs.stat 
+
+# simulated networks
+summary(Cug_Edges$rep.stat) 
+```
+Compared to the 1000 simulations, my network had a much, much higher density than the average simulation and was still more dense than some of the outlier simulations, meaning my network was much more dense than any of the simulations. 
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
