@@ -1,0 +1,54 @@
+---
+title: "Homework 2"
+author: "Thomas Zwiller"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+#Loading the libraries I need 
+library(igraph) 
+library(ggraph)
+```
+
+**2. Loading in the ego-centric data**
+```{r}
+#Importing the node and edge csvs
+nodes <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Homework/msbr_70340_SP25_sociocentric_nodelist.csv')
+summary(nodes)
+edges <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Homework/msbr_70340_SP25_sociocentric_edgelist.csv')
+summary(edges)
+
+net <- graph_from_data_frame(edges, directed = F, vertices = nodes)
+net
+```
+```{r}
+ggraph(net, layout = "kk") + 
+  geom_edge_link0(edge_colour = ifelse(E(net)$ego_section == E(net)$alter_section, 
+                                       "black", "blue"), alpha = 0.25) +
+  geom_node_point(size = igraph::degree(net, mode = "all") / 15,
+                  shape = ifelse(V(net)$ego_section == "SP25-MSBR-70340-01", 24, 21),
+                  fill = 'black') +
+  ggnetwork::theme_blank(legend.position = "none")
+```
+
+```{r}
+# betweenness centralization####
+cent_bet <- centr_betw(net)$centralization
+round(cent_bet, digits = 2)
+```
+
+```{r}
+# degree centralization####
+cent_deg <- centr_degree(net, mode = "all")$centralization
+round(cent_deg, digits = 2)
+```
+
+```{r}
+round(max(betweenness(net_sna)), 2)
+```
+```{r}
+max(degree(net))
+```
+
+
