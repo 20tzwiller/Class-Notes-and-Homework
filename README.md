@@ -19,3 +19,5 @@ SQL 4: A script that queries the Adventureworks Schema
 Scraping and Sentiment: A script that scrapes a wrestling website and tries to ascertain the sentiment of the comments
 
 Web-Scraping Homework: A script that scrapes a wrestling website and aggregates the data
+
+Networks Labs: Exploring the tools in iGraph to understand how network nodes interact with one another and how information can be spread
