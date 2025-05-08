@@ -1,0 +1,160 @@
+---
+title: "ITAO_80870_class_10_canvas"
+author: "T. Zwiller"
+date: "2024-04-17"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+**#1. Loading iGraph, GGraph, and NetDiffuse**
+```{r message=FALSE, warning=FALSE}
+#loading in the needed libraries
+library(igraph)
+library(ggraph)
+library(netdiffuseR)
+```
+<br>
+
+**#2. Loading in Egocentric Network Data**
+```{r}
+#loading in the edge and node data
+edges <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/edgelist.csv')
+nodes <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/nodelist.csv')
+```
+<br>
+
+**#3. Making a directed iGraph Object**
+```{r}
+#making the iGraph
+net <- graph_from_data_frame(edges, directed = F, vertices = nodes)
+net
+```
+<br>
+
+**#4. Visualize Your Network**
+```{r}
+#making the plot
+ggraph(net) +
+  geom_edge_link(color = "black", alpha = 0.3) +
+  geom_node_point(color = "black", fill = "#efd9d3", shape = 21) +
+  theme_graph()
+```
+<br>
+
+**#5. Add 4 Ties, 4 Nodes, Remove 3 Ties, 3 Nodes And Rewire Network**
+```{r}
+library(igraph)
+
+set.seed(000027)
+
+# 1. Add your new ties
+net2 <- igraph::add_edges(net, c(1, 8, 2, 9, 3, 12, 7, 12))
+
+# 2. Delete those edges by ID
+net2 <- igraph::delete_edges(net2, c(1, 10, 3, 4, 10, 11))
+
+# 3. Add 4 brand-new vertices (scalar count)
+net2 <- igraph::add_vertices(net2, 4)
+
+# 4. Remove vertices 12, 5, and 4 by position
+net2 <- igraph::delete_vertices(net2, c(12, 5, 4))
+
+# 5. Re-name each node sequentially so name index stay in sync
+V(net2)$name <- as.character(seq_len(vcount(net2)))
+
+# 6. Randomly rewire 50% of edges, no loops
+net2 <- igraph::rewire(net2, each_edge(p = 0.5, loops = FALSE))
+```
+<br>
+
+**#6. Plot the new network with GGraph**
+```{r}
+#plotting the new graph
+ggraph(net2) +
+  geom_edge_link(color = "black", alpha = 0.3) +
+  geom_node_point(color = "black", fill = "#efd9d3", shape = 21) +
+  theme_graph()
+```
+<br>
+
+**#7. Run a threshold model over the original vs new graph**
+```{r}
+#converting the og plot into a matrix
+net_matrix <- as_adjacency_matrix(net)
+n_nodes <- nrow(net_matrix) 
+
+#converting the new plot into a matrix
+net2_matrix <- as_adjacency_matrix(net2)
+n2_nodes <- nrow(net2_matrix) 
+```
+<br>
+
+Graphing Original Network
+```{r}
+#setting the seed
+set.seed(1)
+
+#running the diffusion threshold model
+diffnet_il <- rdiffnet(
+  t = 10, 
+  seed.graph = net_matrix,
+  seed.nodes = c(1, 7, 11), # chosen nodes
+  seed.p.adopt = 0.1,
+  rewire = F,
+  threshold.dist = function(i) 0.25, 
+  exposure.args = list(normalized = T)
+  )
+
+#getting the info and plots
+diffnet_il
+summary(diffnet_il)
+table(diffnet_il$toa) # time of adoption
+plot_diffnet(diffnet_il, slices = c(1, 2, 3, 4))
+plot_adopters(diffnet_il, what = "adopt")
+plot_adopters(diffnet_il, what = "cumadopt", include.legend = FALSE)
+```
+<br>
+
+```{r}
+#setting the seed
+set.seed(1)
+
+#running the diffusion network
+diffnet_il2 <- rdiffnet(
+  t = 10, 
+  seed.graph = net2_matrix,
+  seed.nodes = c(1, 7, 11), # chosen nodes
+  seed.p.adopt = 0.1,
+  rewire = F,
+  threshold.dist = function(i) 0.25, 
+  exposure.args = list(normalized = T)
+  )
+
+#plotting the graph
+diffnet_il2
+summary(diffnet_il2)
+table(diffnet_il$toa) # time of adoption
+plot_diffnet(diffnet_il2, slices = c(1, 2, 3, 4))
+plot_adopters(diffnet_il2, what = "adopt")
+plot_adopters(diffnet_il2, what = "cumadopt", include.legend = FALSE)
+```
+<br>
+
+**#8. Changes in Network Structure on Diffusion**
+Looking at the adopters and cumulative adopters plot, the original network had a much earlier peak in adopters, with the peak hitting a proportion of 60% around time = 2. The newer network started off very slowly (as did the original plot!) but peaked at time = 4, around 30% before plateauing and staying at 0% for the rest of the plot. 
+
+This means that the original network had a much quicker rate of diffusion compared to the second network.
+
+When I changed the slices on the diffusion plot (thank you for the help by the way!) I saw that the newer network had a more linear growth (hence it taking longer) whereas the original network was much exponential, which is why it maxed out at time = 3
+
+My main takeaway is that the original plot (because it was highly structured by design) was a much more tightly connected plot compared to the new network (which had the random ties + random nodes)
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
