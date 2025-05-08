@@ -8,13 +8,7 @@ Data_Wrangling: reading in data and cleaning it
 
 Regex Transcript Cleaner: Takes a txt transcript and returns it with the speaker identified and properly formatted
 
-SQL 1: A script that queries the Adventureworks Schema
-
-SQL 2: A script that queries the Adventureworks Schema
-
-SQL 3: A script that queries the Adventureworks Schema
-
-SQL 4: A script that queries the Adventureworks Schema
+SQL Homework: A series of SQL scripts that query data from the AdventureWorks database. 
 
 Scraping and Sentiment: A script that scrapes a wrestling website and tries to ascertain the sentiment of the comments
 
