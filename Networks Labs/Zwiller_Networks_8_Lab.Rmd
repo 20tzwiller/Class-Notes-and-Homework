@@ -1,0 +1,70 @@
+---
+title: "Class Eight Lab"
+author: "Tom Zwiller"
+date: "2024-04-10"
+output:
+  pdf_document: default
+  html_document: default
+---
+**#1. Installing and Loading in the Ergm Package**
+```{r message=FALSE, warning=FALSE}
+#Installing the libraries we need
+library(ergm)
+library(dplyr)
+library(magrittr)
+library(ggraph)
+library(sna)
+library(btergm)
+```
+<br>
+
+**#2. Loading in the Node and Edge Data**
+```{r}
+#Node Data
+nodes <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/nodelist.csv')
+summary(nodes)
+#Edge Data
+edges <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/edgelist.csv')
+summary(edges)
+
+net_sna <- network(edges, matrix.type = "edgelist", 
+                   directed = T, vertex.attr = nodes)
+net_sna
+```
+<br>
+
+**#3. Adding Two Terms to the Model**
+```{r message=FALSE, warning=FALSE}
+#basic ERGM
+model1 <- ergm(net_sna ~ edges +  nodematch("Gender") + gwesp(0.05, fixed = TRUE))
+```
+<br>
+
+**#4. Interpret the Model**
+```{r}
+summary(model1)
+```
+
+*Goodness of Fit*
+```{r}
+gof.model1_btergm <- btergm::gof(model1, nsim = 100, # checking goodness of fit of model estimates against 100 simulated networks
+                                   statistics = c(deg, odeg, ideg, triad.directed))
+gof.model1_btergm 
+```
+
+I tinkered with the model for a bit, swapping variables until I found a paring that was statistically significant and finally found that nodematch worked well with gwesp.
+
+Nodematch focused on Gender makes the most sense; I tended to have more men in my network and those men generally had relationships with other men; the only exceptions were myself and my girlfriend, her father and her mother and my friend and his girlfriend. 
+
+And then Gwesp was strong because most of the time two nodes had a handful of shared partners, hence it being statistically significant. 
+
+All things considered, the model had a low AIC (134) and BIC (142.7), and was relatively accurate
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
