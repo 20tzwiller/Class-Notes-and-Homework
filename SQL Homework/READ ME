@@ -1,1 +1,15 @@
-This is the 
+These are all my assignments from my introductory SQL course. 
+
+Homework #1 involves gathering basic information: the names of company positions, the number of managers, their birthdays, and how long they have worked for the company. 
+
+Homework #2 focuses on using case statements and temporary tables to get specific information about different regions in a company's sales territory. 
+
+Homework #3 works on getting financial information about sales performances: the number of goods sold, the unit prices, and total sales for a region.
+
+Homework #4 was mainly about joining tables and then grouping them by region or product to find out specific information about various sales.
+
+The Familiarization assignment served as my introduction to SQL. 
+
+The AdventureWorks schema was the database used for the assignment. 
+
+The database creation assignment was the construction of a basic database for a homework. 
