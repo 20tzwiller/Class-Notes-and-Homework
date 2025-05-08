@@ -1,0 +1,92 @@
+---
+title: "class_9_canvas"
+author: "Thomas Zwiller"
+date: "2024-02-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+**#1. Loading and Installing EpiModel and NetDiffuseR**
+```{r message=FALSE, warning=FALSE}
+#loading the libraries I need
+library(igraph)
+library(ggraph)
+library(EpiModel)
+library(netdiffuseR)
+library(gplots)
+library(ggplot2)
+library(ggpubr)
+library(parallel)
+library(dplyr)
+library(tidyr)
+```
+<br>
+
+**#2. Loading in Data as iGraph**
+```{r}
+#loading in my nodes data
+nodes <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/nodelist.csv')
+summary(nodes)
+
+#loading in my edges data
+edges <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/edgelist.csv")
+summary(edges)
+
+#making it into an iGraph
+net <-igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
+net
+```
+<br>
+
+**#3. Running the Contagion Model**
+```{r}
+#base infection settings
+param <- EpiModel::param.dcm(inf.prob = 0.3, act.rate = 0.3) 
+# s.num = num initally susceptible, i.num = num initial infection
+init <- EpiModel::init.dcm(s.num = 63, i.num = 1)
+# type = contagion type to be modeled, nsteps = time steps to solve over
+control <- EpiModel::control.dcm(type = "SI", nsteps = 100)
+
+# We then combine those parameters in the dcm function. 
+# We save that function as our model. 
+si_mod <- EpiModel::dcm(param, init, control)
+
+plot(si_mod)
+```
+<br>
+```{r}
+#Making it into a dataframe
+si_mod_df <- as.data.frame(si_mod)
+
+plot(si_mod)
+plot(si_mod, y = "si.flow")
+```
+<br>
+```{r}
+#Using the df to make a plot
+ggplot2::ggplot(si_mod_df) + 
+  geom_line(aes(x = time, y = s.num), colour="#EFD9D3") +
+  geom_line(aes(x = time, y = i.num), colour="#A38E8F") +
+  geom_line(aes(x = time, y = si.flow), colour="#57424A") +
+  scale_x_continuous(limits = c(0,100), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0,100), expand = c(0, 0)) +
+  xlab("Time") + ylab("Dynamics") +
+  theme_classic()
+```
+<br>
+**#4. Analysis**
+
+Assuming that time is in days, it looks like susceptibility and infected intersect around day 47, with a peak infection flow to match. In general, because I lowered the infection rate to .30, it took the infection much longer so spread through the network.
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
