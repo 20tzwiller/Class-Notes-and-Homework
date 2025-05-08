@@ -1,0 +1,82 @@
+---
+title: "class_4_lab"
+author: "Thomas Zwiller"
+date: "2025-03-26"
+output: html_document
+---
+
+**1. Loading the igraph package**
+```{r}
+#Loading the libraries I need 
+library(igraph) 
+library(ggraph)
+```
+
+**2. Loading in the ego-centric data**
+```{r}
+#Importing the node and edge csvs
+nodes <- read.csv("/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/nodelist.csv")
+summary(nodes)
+edges <- read.csv('/Users/TomTheIntern/Desktop/Mendoza/Mod 4/Networks/Lab 2/edgelist.csv')
+summary(edges)
+```
+**3 Creating the igraph object**
+
+```{r}
+#making the directed igraph
+net <- graph_from_data_frame(edges, directed = T, vertices = nodes)
+net
+
+#making the un-directed igraph
+un_net <- graph_from_data_frame(edges, directed = F, vertices = nodes)
+un_net
+```
+
+**4. Choose two centrality measures and apply them to your network**
+I am using Degree and Eigenvector as my two centrality measures
+
+**5. Visualize your network (one graph for each measure) with node size representing your chosen measures**
+
+**Degree**
+```{r}
+ggraph(net) + 
+  geom_edge_link0(color = "black", alpha = .5) +
+  geom_node_point(fill = "lightblue", color = "darkblue", shape = 21, 
+                  size = igraph::degree(net, mode = "all"))
+```
+
+**Eigenvector**
+```{r}
+ggraph(un_net) + 
+  geom_edge_link(color = "black", alpha = .5) +
+  geom_node_point(fill = "lightblue", color = "darkblue", shape = 21, 
+                  size = igraph::eigen_centrality(un_net)$vector*16)
+```
+
+**6. Describe what the measure tells you about the people in your network**
+<br>
+
+**What Degree tells me about the people in my network**
+Unsurprisingly, I had the most degrees, which made my node the biggest. Generally, the different communities were relatively the same size: 
+
+the football network (my co-workers) were all consistent because they were connected. 
+my girlfriend's family generally tended to be smaller, as they only had 2-3 connections compared to football having 4-5
+
+my res-life coworkers were the smallest, with my co-workers girlfriend having just one connection, making it the smallest, and about as close to an isolet as possible.
+
+<br>
+**What Eigenvector tells me about the people in my network**
+
+The Eigenvector measure looks relatively similar to the degree measure, though there are a few key differences. My girlfriend has a much bigger circle in the nodes, but because most of her connections were to other relatively un-connected nodes, she had a smaller representation. 
+
+Comparatively, the football network was actually bigger because they all knew me, and each other, which helped improve their score. 
+
+My res-life co-workers were relatively smaller than their node score, however my co-worker who works with the ND bad (and would theoretically know Marcus Freeman) had a bit of a higher score.
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
