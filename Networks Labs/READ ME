@@ -1,1 +1,19 @@
 READ ME
+
+Each Lab references the Network Data folder. Each lab is an RMD file with an acccompanying PDF so it can be read without running the code.
+
+Lab 3 focuses on basic network construction and plotting. 
+
+Lab 4 looks at different measures of centrality.
+
+Lab 5 examines the density of a network and runs a Conditional Uniform Graph Test.
+
+Lab 6 figures out how many communities there are and who is in each community. 
+
+Lab 7 runs a random intercept model, which looks at how the types of nodes and relationships can predict a connection's strength.
+
+Lab 8 looks at how a model can predict a network. 
+
+Lab 9 goes over the epimodel package and examines how an epidemic would spread over a network. 
+
+Lab 10 determines how likely nodes are to adopt something based on how their neighbors have adopted. 
