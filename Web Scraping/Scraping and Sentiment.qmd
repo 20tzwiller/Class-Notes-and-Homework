@@ -1,0 +1,281 @@
+---
+title: "Homework 2"
+author: "Thomas Zwiller"
+format:
+  html:
+    toc: true
+    toc-location: left
+    self-contained: true
+jupyter: python3
+---
+
+## Task 1
+
+We are going to return to the table of the top 100 wrestlers: https://www.cagematch.net/?id=2&view=statistics. Specifically, you are going to get the ratings/comments tables for each wrestler.
+
+```{python}
+from bs4 import BeautifulSoup
+import re
+import numpy as np
+import requests
+import pandas as pd
+from langdetect import detect, DetectorFactory
+
+#lets start with our link
+link = 'https://www.cagematch.net/?id=2&view=statistics'
+
+#check to make sure the request is good
+wrastling = requests.get(link)
+
+#parse the content
+wrastling_soup = BeautifulSoup(wrastling.content, 'html.parser')
+
+#find all the rows I need
+all_rows = wrastling_soup.find_all('tr')
+
+#pull all the gimmicks on the page
+wrastlers_list = wrastling_soup.select(
+  '.LayoutContent .TableContents .TCol.TColSeparator a[href*="gimmick"]')
+
+#flatten the links
+link_list = [link['href'] for link in wrastlers_list]
+
+#and then making them into a dataframe
+wrestler_links = pd.DataFrame({'Links': link_list})
+
+#now I'm going to extract all the wrestler codes from the links
+wrestler_links['Code'] = wrestler_links['Links'].str.extract(r'(?<=nr=)(\d+)(?=&gimmick)')
+
+#and then make the link start and end to concatenate them
+link_start = 'https://www.cagematch.net/?id=2&nr=' 
+link_end = '&page=99'
+
+#setting up a temporary list to house the concatenated links
+link_list = []
+
+#and then creating all the links I'll need with a loop
+for code in wrestler_links['Code']: 
+    link_code = code
+    wrestler_link = link_start + link_code + link_end
+    link_list.append(wrestler_link)
+
+#making an empty dataframe
+comment_df = pd.DataFrame()
+
+#and then making a for loop which will iterate the link list
+for link in link_list:
+  #making a temporary frame that resets each loop
+  rating_frame = []
+  #making the request for the ratings
+  ratins = requests.get(link)
+  #parsing each link
+  ratings_soup = BeautifulSoup(ratins.content, 'html.parser')
+  #checking how many comments there are for each page
+  ratings_rows = ratings_soup.find_all('div', class_='Comment')
+  #then, for each comment, on the page, there's a sub-loop
+  for rating in range(len(ratings_rows)):
+    rating_row = {
+      #that grabs the rating here
+      'User': ratings_soup.select('.CommentHeader')[rating].text,
+      #then the comment
+      'Comment': ratings_soup.select('.CommentContents')[rating].text}
+      #which are appened to the rating frame
+    rating_frame.append(rating_row)
+    #made into a pandas dict
+    comment_frame = pd.DataFrame(rating_frame)
+  #and then they are concatenated to the comment df
+  comment_df = pd.concat([comment_df, comment_frame], ignore_index=True)
+```
+
+With the data now read in, I want to clean it using regex.
+```{python}
+#using regex to pull the rating out of the comment
+comment_df['Rating'] = comment_df['Comment'].str.extract(r'(\d+\.\d|\d\.\d)').astype(float)
+
+#using regex to pull the date from the comment
+comment_df['Date'] = comment_df['User'].str.extract(r'(\d\d\.\d\d\.\d\d\d\d)')
+
+#using regex to get rid of the date
+comment_df['User'] = comment_df['User'].str.replace(r' wrote on \d\d\.\d\d\.\d\d\d\d\:' , '', regex=True)
+
+#using regex to get rid of the date
+comment_df['Comment'] = comment_df['Comment'].str.replace(r'(\[\d+\.\d+\]|\[\d\.\d\])', '', regex = True).astype('string')
+
+#this turns any links into 'DELETE'
+comment_df['Comment'] = comment_df['Comment'].str.replace(r'http\S*', 'DELETE', regex=True).astype('string')
+
+#and then I drop the previosuly existing links
+comment_df = comment_df[comment_df['Comment'] != 'DELETE'].reset_index(drop=True)
+
+#and then I'm checking for the comment of each language
+comment_df['Comment Lang'] = comment_df['Comment'].apply(lambda x: detect(x) if isinstance(x, str) else 'No Language Detected')
+
+#if it's English, it stays in, else it goes
+comment_df = comment_df[comment_df['Comment Lang'] == 'en']
+
+#and if it's na, it's getting dropped
+comment_df = comment_df.dropna(subset=['Comment'])
+
+comment_df.head(10)
+```
+
+## Task 2
+
+Perform any form of sentiment analysis. What is the relationship between a reviewer's sentiment and their rating?
+
+```{python}
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from plotnine import ggplot, geom_point, aes, stat_smooth, facet_wrap
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+#starting by initializing the sentiment analyzer 
+vader = SentimentIntensityAnalyzer()
+
+#looping through the comments in order to assign a sentiment score to a new column
+for comment in range(len(comment_df)):
+  sentiment_score = vader.polarity_scores(comment_df.iloc[comment]['Comment']).get('compound')
+  comment_df.loc[comment, 'Vader Sentiment'] = sentiment_score
+
+#getting the correlation
+ratings_corr = comment_df['Rating'].corr(comment_df['Vader Sentiment'])
+
+#and then plotting
+vader_plot = ggplot(comment_df, aes("Rating", "Vader Sentiment", color= "Vader Sentiment")) + geom_point()
+
+vader_plot
+```
+
+Vader Correlation: `r ratings_corr `
+
+I didn't love the overall result from the Vader sentiment. The distribution on the comments with a rating of 10 was much too wide; it's hard to see a lot of 10 ratings being incredibly negative. So I wanted to try something else
+
+```{python}
+#initializng the sentiment intensity analyzer
+sid = SentimentIntensityAnalyzer()
+
+#dropping the na values
+comment_df = comment_df.dropna(subset=['Comment'])
+
+#appling sid to the comments and writing it out to a new column
+comment_df['Sid Sentiment'] = comment_df['Comment'].apply(lambda x: sid.polarity_scores(x)['compound'])
+
+#getting the correlation
+ratings_corr_2 = comment_df['Rating'].corr(comment_df['Sid Sentiment'])
+
+#plotting
+sid_plot = ggplot(comment_df, aes("Rating", "Sid Sentiment", color= "Sid Sentiment")) + geom_point()
+
+sid_plot
+```
+
+Sid Correlation: `r ratings_corr_2 `
+
+Unfortunately, the sid analyzer didn't really seem to do much better so I decided to also use a transformer
+
+```{python}
+from transformers import pipeline
+
+#maxing the length at 512
+sentiment_analysis = pipeline("sentiment-analysis", truncation=True, max_length=512)
+
+#applying the analyzer and reading out the score
+comment_df['Pipeline Confidence'] = comment_df['Comment'].apply(lambda x: sentiment_analysis(x)[0]['score'])
+
+#applying the analyzer and reading out the label
+comment_df['Pipeline Label'] = comment_df['Comment'].apply(lambda x: sentiment_analysis(x)[0]['label'])
+
+#checking the correlation
+ratings_corr_3 = comment_df['Rating'].corr(comment_df['Pipeline Confidence'])
+
+#and then plotting
+pipe_plot = ggplot(comment_df, aes("Rating", "Pipeline Confidence", color= "Pipeline Label")) + geom_point()
+
+pipe_plot
+```
+
+Pipeline Correlation: `r ratings_corr_3 `
+
+The chart, while interesting, needed to get cleaned up a little bit. Too busy. 
+
+```{python}
+#poistive only
+pos_df = comment_df[comment_df['Pipeline Label'] == 'POSITIVE']
+
+#plot
+pos_plot = ggplot(pos_df, aes("Rating", "Pipeline Confidence", color= "Pipeline Label")) + geom_point()
+
+pos_plot
+```
+
+```{python}
+#negative only
+neg_df = comment_df[comment_df['Pipeline Label'] == 'NEGATIVE']
+
+#plot
+neg_plot = ggplot(neg_df, aes("Rating", "Pipeline Confidence", color= "Pipeline Label")) + geom_point()
+
+neg_plot
+```
+
+I think that splitting out the charts reveals an interesting pattern. The lower ratings had more negative comments, and the model seemed to be much more confident in assigning that rating. 
+
+However, the same problem as before seemed to pop up once the model got to a rating of 6 and beyond. I suspect that it's largely because comments do contain legitimate critiques or might be talking about fights in which the fighter lost, which could be seen as negative.
+
+But I decided to see the actual count of each and found that despite the fact that there seemed to be a lot of negative comments, there were actually quite a few more positive comments, it was just hard to render them all on the plot.
+
+```{python}
+#groupping the pos ratings so I can count how many there are
+pos_nums = pos_df.groupby(['Rating','Pipeline Label']).size()
+
+corr_pos = pos_df['Rating'].corr(pos_df['Pipeline Confidence'])
+
+print(pos_nums)
+
+#groupping the neg ratings so I can count how many there are
+neg_nums = neg_df.groupby(['Rating','Pipeline Label']).size()
+
+corr_neg = neg_df['Rating'].corr(neg_df['Pipeline Confidence'])
+
+print(neg_nums)
+```
+
+Positive Correlation: `r corr_pos`
+Negative Correlation: `r corr_neg`
+
+So I would say, in general: 
+
+When a comment had a lower rating, the model had much less confidence it in the assessment that it was a positive comment, but seemed to be more confident with it being a negative comment. 
+
+The model did struggle to differeniate betwen the higher ratings, but I do think it's because the language included could be nuanced and contain valid critiques but still result in a positive overall sentiment that the computer was unable to detect. 
+
+By and large, the positive comments were much more numerous than the negative comments, which was hard to extrapolate from the plot.
+
+## Task 3
+
+Perform any type of topic modeling on the comments. What are the main topics of the comments? How can you use those topics to understand what people value?
+
+```{python}
+from bertopic import BERTopic
+from bertopic.vectorizers import ClassTfidfTransformer
+
+#reducing the frequently found words for the topic analyzer 
+ctfidf_model = ClassTfidfTransformer(
+  reduce_frequent_words=True
+)
+
+#setting up the topic model
+topic_model = BERTopic(ctfidf_model=ctfidf_model)
+
+#getting the topics and probabilities
+topics, probs = topic_model.fit_transform(comment_df['Comment'].to_list())
+
+#making it an object
+model_df = pd.DataFrame(topic_model.get_topic_info())
+
+model_df.head(10)
+```
+
+In general, the model seemed to group topics by the wrestler that the comment was about, which makes sense, as the comments would have included their names and then similar words to describe how they felt, as well as a simialr sentiment, as the general consensus was positivity. 
+
+I think the best way to look at these models would be to see which wrestler (or wrestlers) it's about and then how that wrestler is described to better understand their brand.
