@@ -1,0 +1,137 @@
+---
+title: "Homework 2 Part 2"
+author: "Thomas Zwiller"
+format:
+  html:
+    self-contained: true
+---
+
+## Analytic Tasks
+
+The tasks below should live in a separate qmd from your prep work. You will want to `load` your data from the previous step.
+
+```{r}
+#loading in my final product version (the clean, aggregated version, so 100 rows)
+load("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 2/final_movie_product.rda")
+#and then the cleaned, un-aggregated version (1000 rows)
+load("/Users/TomTheIntern/Desktop/Mendoza/Mod 1/Wrangling/Homework 2/raw_movie_data.rda")
+
+```
+
+1.    Which genre has the highest critic rating? Viewer rating?
+```{r}
+#created a composite average rating here, so that both ratings were captured in the set and then could be aggregated
+raw_data$average_rating <- (raw_data$rating_first_watch + raw_data$rating_second_watch) / 2
+
+#pulling critics only so I can cleanly aggregate it
+critic_data <- raw_data[raw_data$reviewer_type == "Critic", ]
+#aggregating the critic data
+critic_genre_rating <- aggregate(critic_data$average_rating ~ critic_data$genre, data = critic_data, FUN = mean)
+#I then found this link https://www.reddit.com/r/rstats/comments/d8c0ae/how_do_i_return_a_row_name_for_a_max_or_min_value/
+#which suggested using which max
+critic_genre_rating$`critic_data$genre`[which.max(critic_genre_rating$`critic_data$average_rating`)]
+
+#pulling the viewer data just like I did the critic
+viewer_data <- raw_data[raw_data$reviewer_type == "Viewer", ]
+#aggregating the viewer data just like the critic
+viewer_genre_rating <- aggregate(viewer_data$average_rating ~ viewer_data$genre, data = viewer_data, FUN = mean)
+viewer_genre_rating$`viewer_data$genre`[which.max(viewer_genre_rating$`viewer_data$average_rating`)]
+```
+
+2.    What is the relationship between movie length and average rating?
+```{r}
+#I just ended up writing a function to make my charting a little bit easier because I'm kind of lazy. I have no idea if it works well or if I would've been better off just copy and pasting
+lazy_plot_function <- function(data_name, x_plot, y_plot, x_name, y_name, title, intercept){
+  #imports ggplot2
+  library(ggplot2)
+  #imports gg themes
+  library(ggthemes)
+  #requires the data name, what to plot on the x, what to plot on the y
+  chart_output <- ggplot(data_name, aes(x = x_plot, y = y_plot)) + 
+                   geom_point()+
+    #then the x label, y label and title
+                    labs(x = x_name, 
+                         y = y_name, 
+                        title = title)+
+                        theme_stata()+
+    #and a line of best fit to show the relationship
+                   geom_abline(intercept = coef(intercept)[1], slope = coef(intercept)[2], color = 'blue')
+  return(chart_output)
+}
+#Cool, now that I have a function that in theory makes graphing easier, let's graph it!
+#A requirement is that I need to ensure that I have a lm function calculated, so lets do that
+length_rating_relationship <- lm(raw_data$average_rating ~ raw_data$length_combined)
+summary(length_rating_relationship)
+#and plot the function
+lazy_plot_function(raw_data, raw_data$length_combined, raw_data$average_rating,
+                   "Length in Minutes", "Average Rating", "Does Movie Length Improve Ratings?", 
+                   length_rating_relationship)
+```
+Just visually looking at the data, it's pretty safe to say that no, there is not really a correlation between a movie's length and the average rating it receives. The sample is pretty solid in terms of size, but the data is just a bit too random.
+
+3.    What is the relationship between the date delta and average rating?
+
+```{r}
+#Quickly make the relationship model
+date_delta_rating <- lm(raw_data$average_rating ~ raw_data$date_delta) 
+summary(date_delta_rating)
+
+#Time to graph! (I made it, might as well use it...)
+lazy_plot_function(raw_data, raw_data$date_delta, raw_data$average_rating,
+                   "Amount of Time Between Release and Review (In Weeks)", 
+                   "Average Rating", "Does a Movies Age Impact Its Ratings?", 
+                   date_delta_rating)
+```
+Another one where you can say that there is a limited relationship between the rating and when the movie came out. There is a slight negative correlation, which does suggest there is a slight impact to ratings based on age, but it's so small that we would need to either collect data or just ignore the relationship because it's so small.
+
+4.    What is the relationship between total number of reviews and average?
+```{r}
+#I had the total reviews in my final product data, but not my raw data file, which means that I needed to add a combined ratings to my cleaned data
+final_product$average_rating <- (final_product$`First Watch Rating` + final_product$`Second Watch Rating`) / 2
+#You know the drill! Find the relationship
+rating_to_reviews <- lm(final_product$average_rating ~ final_product$`Total Reviews`) 
+summary(rating_to_reviews)
+
+#And then plot it (Okay this might have been worth it...)
+lazy_plot_function(final_product, final_product$`Total Reviews`, final_product$average_rating,
+                   "Total Number of Reviews", 
+                   "Average Rating", "Do More Ratings Result in a Better Rating?", 
+                   rating_to_reviews)
+```
+Finally! we have an R-squared rating that is greater than .02! It's just 11.6, so a relatively small relationship, but there overall is a positive correlation between the number of reviews and the average rating which suggests that people who enjoyed a movie are more likely to rate the movie favorably.
+
+5. Which movie contains your word of interest at the highest frequency. Does that word have any relationship with average rating?
+```{r}
+#Unless I'm really missing something, this feels really straight forward.
+#Quickly aggregate the word count based on the movie title
+word_frequency_per_movie <- aggregate(raw_data$disappointing_count~ raw_data$title, FUN = sum)
+#Make the model
+#Then group the aggregated movies into a data frame named final_with_word_frequency
+final_with_word_frequency <- merge(final_product, 
+                              word_frequency_per_movie,
+                              by.x = 'Movie Title',
+                              by.y = 'raw_data$title')
+
+#first things first, I found the high count of disappointing and stored it as a variable 
+high_count <- max(final_with_word_frequency$`raw_data$disappointing_count`)
+
+#I then created a data frame by comparing the values in the disappointing column to the high count variable, and imported anything that matched
+most_disappointing <- final_with_word_frequency$`Movie Title`[final_with_word_frequency$`raw_data$disappointing_count` == high_count]
+#and then wrote out the most disappointing
+most_disappointing
+
+#Then I aggregated the average rating based on the number of times the word 'disappointing appeared
+#Which resulted in the table below
+frequency_average <- aggregate(average_rating ~ `raw_data$disappointing_count`, data = final_with_word_frequency, FUN = mean)
+#Quickly clean up the column names 
+colnames(frequency_average) <- c("Disappointing Count", "Average Rating")
+frequency_average
+```
+Those movies with a didn't count of 0 achieve the highest average rating of 3.152, narrowly beating the the movie ratings that had 4 mentions of the word didn't. However, 5 mention of the word didn't wound up having the lowest rating, and the only rating to dip below 3.0.
+
+Also worth noting. I intially did make a graph and it was hard to read. I then made a box and whisker plot but honestly it still was harder to interpret than the table. Because of small amount of rows and the easy to understand average rating, I figured keeping it simple was the better move.
+
+
+
+
+
